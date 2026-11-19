@@ -12,9 +12,14 @@ import net.minecraft.world.effect.MobEffects;
 /**
  * Client-seitige Mod, kein Server-Teil, keine Mixins.
  *
+ * Turtle Master ist in Minecraft kein eigener Effekt, sondern ein Trank, der gleichzeitig
+ * Langsamkeit IV und Resistenz III gibt (die starke Variante: Langsamkeit VI und Resistenz IV).
+ * Diese Mod erkennt Turtle Master daran, dass beide Effekte zusammen aktiv sind
+ * (Langsamkeit ab Stufe IV, Resistenz ab Stufe III).
+ *
  * Zeigt oben rechts eine Meldung (Toast), wenn
- *   1) dein Turtle-Master-Effekt nur noch ca. eine Minute läuft, und
- *   2) der Effekt abgelaufen ist (du hast keinen mehr).
+ *   1) Turtle Master nur noch ca. eine Minute läuft, und
+ *   2) Turtle Master abgelaufen ist (du hast ihn nicht mehr).
  *
  * Die Warnung bei einer Minute kommt nur, wenn der Effekt mit MEHR als einer Minute
  * angefangen hat (oder verlängert wurde). Ein kurzer Effekt, der schon unter einer Minute
@@ -24,6 +29,11 @@ public class TurtleMasterAlertClient implements ClientModInitializer {
 
 	/** Restdauer, ab der gewarnt wird (20 Ticks = 1 Sekunde, also 1200 = 1 Minute). */
 	private static final int LOW_WARNING_TICKS = 60 * 20;
+
+	/** Turtle Master: Langsamkeit IV = Stufe 3 (0 = Stufe I). */
+	private static final int MIN_SLOWNESS_AMPLIFIER = 3;
+	/** Turtle Master: Resistenz III = Stufe 2 (0 = Stufe I). */
+	private static final int MIN_RESISTANCE_AMPLIFIER = 2;
 
 	private static final SystemToast.SystemToastId LOW_TOAST = new SystemToast.SystemToastId();
 	private static final SystemToast.SystemToastId EMPTY_TOAST = new SystemToast.SystemToastId();
@@ -44,10 +54,16 @@ public class TurtleMasterAlertClient implements ClientModInitializer {
 			return;
 		}
 
-		MobEffectInstance effect = player.getEffect(MobEffects.TURTLE_MASTER);
+		MobEffectInstance slowness = player.getEffect(MobEffects.SLOWNESS);
+		MobEffectInstance resistance = player.getEffect(MobEffects.RESISTANCE);
 
-		if (effect != null) {
-			if (effect.isInfiniteDuration()) {
+		boolean active = slowness != null
+				&& resistance != null
+				&& slowness.getAmplifier() >= MIN_SLOWNESS_AMPLIFIER
+				&& resistance.getAmplifier() >= MIN_RESISTANCE_AMPLIFIER;
+
+		if (active) {
+			if (slowness.isInfiniteDuration() || resistance.isInfiniteDuration()) {
 				// Unendlicher Effekt: nie eine "bald weg"-Warnung
 				hadEffect = true;
 				lowWarned = true;
@@ -55,7 +71,7 @@ public class TurtleMasterAlertClient implements ClientModInitializer {
 				return;
 			}
 
-			int duration = effect.getDuration();
+			int duration = Math.min(slowness.getDuration(), resistance.getDuration());
 
 			// Neu bekommen oder verlängert: Warnung für diesen Durchlauf neu scharf schalten,
 			// aber nur, wenn der Effekt über der Warngrenze liegt.
