@@ -2,8 +2,8 @@
 	"schemaVersion": 1,
 	"id": "autototemcrystal",
 	"version": "${version}",
-	"name": "Auto Totem (Crystal Detect)",
-	"description": "Client-side mod: when an End Crystal appears next to you, equips a Totem in your offhand and hotbar. After a Totem pops, it moves the next hotbar Totem into place without opening the inventory.",
+	"name": "Auto Totem",
+	"description": "Client-side mod: moves a hotbar Totem into your offhand after a Totem pops or when you drop below one heart, without opening the inventory.",
 	"authors": [
 		"You"
 	],
