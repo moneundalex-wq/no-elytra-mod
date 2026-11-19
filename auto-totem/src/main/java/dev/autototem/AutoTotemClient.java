@@ -6,6 +6,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.ItemStack;
@@ -14,35 +16,33 @@ import net.minecraft.world.item.Items;
 /**
  * Client-seitige Mod, kein Server-Teil, keine Mixins.
  *
- * Ein Totem aus der Hotbar kommt in die Offhand, sobald
- *   1) dein Totem gepoppt ist (Totem in den Händen weg und du wurdest getroffen), oder
- *   2) du unter einem ganzen Herz bist (weniger als LOW_HEALTH Lebenspunkte).
+ * Genau ein Auslöser: Dein Totem ist gepoppt. Dann wird EINMAL ein Totem aus der Hotbar
+ * in die Offhand getauscht, falls deine Offhand danach leer ist. Danach tut die Mod nichts
+ * mehr, bis das nächste Totem poppt. Sie hält dich nie fest: Du kannst das Totem sofort
+ * wieder aus der Offhand nehmen, auf jeden Slot wechseln, alles. Es wird nichts erneut
+ * erzwungen.
  *
- * Wichtig: Deine Hotbar-Auswahl wird NIE verändert. Das Totem wird direkt aus seinem
- * Hotbar-Slot in die Offhand getauscht (derselbe Klick wie "Maus über Item + F-Taste"),
- * ohne dass ein Inventar-Fenster geöffnet wird. Du kannst jederzeit frei zwischen
- * den Slots wechseln, auch auf Totem-Slots.
- * Nur Totems aus der Hotbar (Slots 1-9) werden benutzt.
+ * Deine Hotbar-Auswahl wird nie verändert. Das Totem wird direkt aus seinem Hotbar-Slot
+ * in die Offhand getauscht (derselbe Klick wie "Maus über Item + F-Taste"), ohne dass ein
+ * Inventar-Fenster geöffnet wird. Nur Totems aus der Hotbar (Slots 1-9) werden benutzt.
+ *
+ * Pop-Erkennung: Beim Pop gibt der Server dir Regeneration II (45 s), Absorption und
+ * Feuerresistenz. Taucht dieses frische Regeneration-II-Paket auf, ist ein Totem gepoppt.
  */
 public class AutoTotemClient implements ClientModInitializer {
 
-	/** Lebenspunkte-Grenze: 2.0 = ein ganzes Herz. Alles darunter (z. B. ein halbes Herz = 1.0) löst aus. */
-	private static final float LOW_HEALTH = 2.0f;
-	/** Ab dieser Lebenszahl (oder bei Treffer-Animation) zählt ein Totem-Verlust als Pop. */
-	private static final float POP_CHECK_HEALTH = 6.0f;
-	/** Wie lange nach einem Pop nachgefüllt wird (20 Ticks = 1 Sekunde). */
-	private static final int POP_REFILL_TICKS = 40;
-	/** Pause zwischen zwei Tausch-Versuchen, damit der Server zwischendurch antworten kann. */
-	private static final int ACTION_COOLDOWN = 3;
+	/** So viele Ticks nach einem Pop wird auf die leere Offhand gewartet (20 Ticks = 1 Sekunde). */
+	private static final int PENDING_TICKS = 10;
+	/** Ein frischer Totem-Pop gibt Regeneration II mit 900 Ticks. Ab dieser Restdauer gilt sie als frisch. */
+	private static final int FRESH_REGEN_MIN_TICKS = 850;
 
 	/** In der Inventar-Ansicht des Spielers beginnen die Hotbar-Slots bei Nummer 36. */
 	private static final int HOTBAR_MENU_OFFSET = 36;
 	/** Mausknopf-Wert 40 bedeutet bei ClickType.SWAP "mit der Offhand tauschen". */
 	private static final int OFFHAND_SWAP_BUTTON = 40;
 
-	private int lastHandTotems = 0;
-	private int popTicks = 0;
-	private int cooldown = 0;
+	private boolean hadPopEffects = false;
+	private int pendingTicks = 0;
 
 	@Override
 	public void onInitializeClient() {
@@ -55,74 +55,64 @@ public class AutoTotemClient implements ClientModInitializer {
 		MultiPlayerGameMode gameMode = client.gameMode;
 
 		if (player == null || level == null || gameMode == null) {
-			lastHandTotems = 0;
-			popTicks = 0;
-			cooldown = 0;
+			hadPopEffects = false;
+			pendingTicks = 0;
 			return;
 		}
 		if (player.isSpectator()) {
 			return;
 		}
 
-		// --- Totem-Pop erkennen ---
-		int handTotems = countHandTotems(player);
-		boolean hurt = player.hurtTime > 0 || player.getHealth() <= POP_CHECK_HEALTH;
-		if (handTotems < lastHandTotems && hurt) {
-			popTicks = POP_REFILL_TICKS;
+		// --- Totem-Pop erkennen (nur der Moment, in dem das Effekt-Paket neu auftaucht) ---
+		boolean popEffects = hasFreshPopEffects(player);
+		if (popEffects && !hadPopEffects) {
+			pendingTicks = PENDING_TICKS;
 		}
-		lastHandTotems = handTotems;
-		if (popTicks > 0) {
-			popTicks--;
-		}
+		hadPopEffects = popEffects;
 
-		if (cooldown > 0) {
-			cooldown--;
+		if (pendingTicks <= 0) {
 			return;
 		}
+		pendingTicks--;
+
 		// Kein Eingriff, solange du selbst ein Inventar/Menü offen hast
 		if (client.screen != null || !player.isAlive()) {
 			return;
 		}
 
-		// --- Auslöser: Pop oder unter einem Herz ---
-		boolean lowHealth = player.getHealth() < LOW_HEALTH;
-		if (!lowHealth && popTicks <= 0) {
-			return;
-		}
-
-		// Offhand hat schon ein Totem: nichts zu tun
+		// Offhand schon belegt (z. B. das andere Totem ist gepoppt): nichts tun
 		if (isTotem(player.getOffhandItem())) {
 			return;
 		}
 
 		int slot = findHotbarTotem(player.getInventory());
 		if (slot < 0) {
+			pendingTicks = 0;
 			return;
 		}
 
-		// Totem direkt aus dem Hotbar-Slot in die Offhand tauschen. Hand-Auswahl bleibt unberührt.
+		// Einmal tauschen, danach ist dieser Pop erledigt. Hand-Auswahl bleibt unberührt.
+		pendingTicks = 0;
 		gameMode.handleInventoryMouseClick(
 				player.inventoryMenu.containerId,
 				HOTBAR_MENU_OFFSET + slot,
 				OFFHAND_SWAP_BUTTON,
 				ClickType.SWAP,
 				player);
-		cooldown = ACTION_COOLDOWN;
+	}
+
+	/** Frische Regeneration II (ca. 900 Ticks) plus Absorption: typisches Paket nach einem Totem-Pop. */
+	private static boolean hasFreshPopEffects(LocalPlayer player) {
+		MobEffectInstance regen = player.getEffect(MobEffects.REGENERATION);
+		MobEffectInstance absorption = player.getEffect(MobEffects.ABSORPTION);
+		return regen != null
+				&& absorption != null
+				&& regen.getAmplifier() == 1
+				&& regen.getDuration() >= FRESH_REGEN_MIN_TICKS;
 	}
 
 	private static boolean isTotem(ItemStack stack) {
 		return stack.is(Items.TOTEM_OF_UNDYING);
-	}
-
-	private static int countHandTotems(LocalPlayer player) {
-		int count = 0;
-		if (isTotem(player.getMainHandItem())) {
-			count++;
-		}
-		if (isTotem(player.getOffhandItem())) {
-			count++;
-		}
-		return count;
 	}
 
 	/** Sucht ein Totem in der Hotbar. Slots, die du gerade nicht in der Hand hältst, werden bevorzugt. */

@@ -3,7 +3,7 @@
 	"id": "autototemcrystal",
 	"version": "${version}",
 	"name": "Auto Totem",
-	"description": "Client-side mod: moves a hotbar Totem into your offhand after a Totem pops or when you drop below one heart, without opening the inventory.",
+	"description": "Client-side mod: moves a hotbar Totem into your offhand once after a Totem pops, without opening the inventory and without ever locking your hotbar.",
 	"authors": [
 		"You"
 	],
