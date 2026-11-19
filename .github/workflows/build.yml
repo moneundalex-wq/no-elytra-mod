@@ -20,6 +20,8 @@ jobs:
             slug: totem
           - dir: turtle-master-alert
             slug: turtle
+          - dir: junk-drop
+            slug: junk
     defaults:
       run:
         working-directory: ${{ matrix.dir }}

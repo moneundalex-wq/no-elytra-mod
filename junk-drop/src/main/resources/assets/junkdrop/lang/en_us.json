@@ -1,0 +1,5 @@
+{
+	"key.junkdrop.drop": "Drop junk (inventory)",
+	"key.junkdrop.drop_hotbar": "Drop junk (inventory + hotbar)",
+	"key.junkdrop.toggle": "Add/remove held item to junk list"
+}
