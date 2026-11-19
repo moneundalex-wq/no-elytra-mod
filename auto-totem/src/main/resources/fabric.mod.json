@@ -1,0 +1,23 @@
+{
+	"schemaVersion": 1,
+	"id": "autototemcrystal",
+	"version": "${version}",
+	"name": "Auto Totem (Crystal Detect)",
+	"description": "Client-side mod: when an End Crystal appears next to you, equips a Totem in your offhand and hotbar. After a Totem pops, it moves the next hotbar Totem into place without opening the inventory.",
+	"authors": [
+		"You"
+	],
+	"license": "CC0-1.0",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"dev.autototem.AutoTotemClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.18.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

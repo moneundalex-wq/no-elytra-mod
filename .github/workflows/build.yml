@@ -1,4 +1,4 @@
-name: Build Mod
+name: Build Mods
 
 on:
   push:
@@ -10,6 +10,17 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dir: .
+            slug: elytra
+          - dir: auto-totem
+            slug: totem
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
     steps:
       - uses: actions/checkout@v4
 
@@ -29,8 +40,8 @@ jobs:
       - name: Fertige Mod hochladen
         uses: actions/upload-artifact@v4
         with:
-          name: no-elytra-on-armor-stand
-          path: build/libs/no-elytra-on-armor-stand-*[0-9].jar
+          name: ${{ matrix.slug }}
+          path: ${{ matrix.dir }}/build/libs/*[0-9].jar
 
       # Legt die fertige .jar als Download auf der Releases-Seite ab
       - name: Release erstellen
@@ -38,6 +49,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           JAR=$(ls build/libs/*.jar | grep -v -- '-sources' | head -1)
-          gh release create "build-${{ github.run_number }}" "$JAR" \
-            --title "Build ${{ github.run_number }}" \
+          gh release create "${{ matrix.slug }}-${{ github.run_number }}" "$JAR" \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "${{ matrix.slug }} Build ${{ github.run_number }}" \
             --notes "Fertige Mod für Minecraft 1.21.11. Die .jar herunterladen und in den mods-Ordner legen (Fabric API wird zusätzlich benötigt)."
