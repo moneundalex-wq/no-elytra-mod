@@ -4,12 +4,10 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
-import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -20,9 +18,10 @@ import net.minecraft.world.item.Items;
  *   1) dein Totem gepoppt ist (Totem in den Händen weg und du wurdest getroffen), oder
  *   2) du unter einem ganzen Herz bist (weniger als LOW_HEALTH Lebenspunkte).
  *
- * Es wird nie das Inventar geöffnet: Der Server bekommt "Slot wählen", "Item in die
- * Offhand tauschen" (wie die F-Taste) und "alten Slot wieder wählen". Du hältst
- * danach also wieder dasselbe Item in der Hand wie vorher.
+ * Wichtig: Deine Hotbar-Auswahl wird NIE verändert. Das Totem wird direkt aus seinem
+ * Hotbar-Slot in die Offhand getauscht (derselbe Klick wie "Maus über Item + F-Taste"),
+ * ohne dass ein Inventar-Fenster geöffnet wird. Du kannst jederzeit frei zwischen
+ * den Slots wechseln, auch auf Totem-Slots.
  * Nur Totems aus der Hotbar (Slots 1-9) werden benutzt.
  */
 public class AutoTotemClient implements ClientModInitializer {
@@ -36,6 +35,11 @@ public class AutoTotemClient implements ClientModInitializer {
 	/** Pause zwischen zwei Tausch-Versuchen, damit der Server zwischendurch antworten kann. */
 	private static final int ACTION_COOLDOWN = 3;
 
+	/** In der Inventar-Ansicht des Spielers beginnen die Hotbar-Slots bei Nummer 36. */
+	private static final int HOTBAR_MENU_OFFSET = 36;
+	/** Mausknopf-Wert 40 bedeutet bei ClickType.SWAP "mit der Offhand tauschen". */
+	private static final int OFFHAND_SWAP_BUTTON = 40;
+
 	private int lastHandTotems = 0;
 	private int popTicks = 0;
 	private int cooldown = 0;
@@ -48,8 +52,9 @@ public class AutoTotemClient implements ClientModInitializer {
 	private void onTick(Minecraft client) {
 		LocalPlayer player = client.player;
 		ClientLevel level = client.level;
+		MultiPlayerGameMode gameMode = client.gameMode;
 
-		if (player == null || level == null) {
+		if (player == null || level == null || gameMode == null) {
 			lastHandTotems = 0;
 			popTicks = 0;
 			cooldown = 0;
@@ -74,6 +79,7 @@ public class AutoTotemClient implements ClientModInitializer {
 			cooldown--;
 			return;
 		}
+		// Kein Eingriff, solange du selbst ein Inventar/Menü offen hast
 		if (client.screen != null || !player.isAlive()) {
 			return;
 		}
@@ -94,7 +100,13 @@ public class AutoTotemClient implements ClientModInitializer {
 			return;
 		}
 
-		moveTotemToOffhand(player, slot);
+		// Totem direkt aus dem Hotbar-Slot in die Offhand tauschen. Hand-Auswahl bleibt unberührt.
+		gameMode.handleInventoryMouseClick(
+				player.inventoryMenu.containerId,
+				HOTBAR_MENU_OFFSET + slot,
+				OFFHAND_SWAP_BUTTON,
+				ClickType.SWAP,
+				player);
 		cooldown = ACTION_COOLDOWN;
 	}
 
@@ -125,24 +137,5 @@ public class AutoTotemClient implements ClientModInitializer {
 			return selected;
 		}
 		return -1;
-	}
-
-	/**
-	 * Slot wählen, mit der Offhand tauschen, alten Slot wieder wählen. Alles in einem Tick,
-	 * ohne Inventar. Die Auswahl auf deinem Bildschirm ändert sich dabei nicht.
-	 */
-	private static void moveTotemToOffhand(LocalPlayer player, int slot) {
-		int previous = player.getInventory().getSelectedSlot();
-
-		if (slot != previous) {
-			player.connection.send(new ServerboundSetCarriedItemPacket(slot));
-		}
-		player.connection.send(new ServerboundPlayerActionPacket(
-				ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND,
-				BlockPos.ZERO,
-				Direction.DOWN));
-		if (slot != previous) {
-			player.connection.send(new ServerboundSetCarriedItemPacket(previous));
-		}
 	}
 }
