@@ -18,6 +18,8 @@ jobs:
             slug: elytra
           - dir: auto-totem
             slug: totem
+          - dir: turtle-master-alert
+            slug: turtle
     defaults:
       run:
         working-directory: ${{ matrix.dir }}
