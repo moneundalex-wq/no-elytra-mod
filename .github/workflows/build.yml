@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,3 +31,13 @@ jobs:
         with:
           name: no-elytra-on-armor-stand
           path: build/libs/no-elytra-on-armor-stand-*[0-9].jar
+
+      # Legt die fertige .jar als Download auf der Releases-Seite ab
+      - name: Release erstellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          JAR=$(ls build/libs/*.jar | grep -v -- '-sources' | head -1)
+          gh release create "build-${{ github.run_number }}" "$JAR" \
+            --title "Build ${{ github.run_number }}" \
+            --notes "Fertige Mod für Minecraft 1.21.11. Die .jar herunterladen und in den mods-Ordner legen (Fabric API wird zusätzlich benötigt)."
