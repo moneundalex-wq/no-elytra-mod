@@ -1,7 +1,7 @@
 name: Inspect MCEF
 
 # Wird nur ausgelöst, wenn die Datei inspect-mcef.trigger geändert wird.
-# Schreibt die Schnittstelle von MCEF Modern für Minecraft 1.21.11 ins Protokoll.
+# Schreibt Teile des Quellcodes von MCEF Modern für Minecraft 1.21.11 ins Protokoll.
 on:
   push:
     paths:
@@ -11,35 +11,12 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Jar herunterladen und Schnittstelle auflisten
+      - name: Implementierung lesen
         run: |
-          V="0.3.3+mc1.21.11.jcef146.0.10"
-          BASE="https://maven.dimaskama.net/releases/net/dimaskama/mcef-modern/$V"
-          curl -fsS -o mcef.jar "$BASE/mcef-modern-$V.jar" && echo "jar ok" || echo "jar fetch failed"
-          curl -fsS -o mcef-sources.jar "$BASE/mcef-modern-$V-sources.jar" && echo "sources ok" || echo "no sources jar"
-          echo "#### Klassen"; unzip -l mcef.jar | grep -E "net/dimaskama" | head -60
-          echo "#### javap API"
-          javap -public -cp mcef.jar net.dimaskama.mcef.api.MCEFApi net.dimaskama.mcef.api.MCEFBrowser || true
-          echo "#### fabric.mod.json"
-          unzip -p mcef.jar fabric.mod.json || true
-          if [ -f mcef-sources.jar ]; then
-            mkdir src && cd src && unzip -q ../mcef-sources.jar
-            echo "#### API-Quellcode"
-            cat net/dimaskama/mcef/api/MCEFBrowser.java net/dimaskama/mcef/api/MCEFApi.java
-          fi
-
-      - name: Git-Zweige und Test-Mod für 1.21.11
-        run: |
-          git clone https://github.com/DimasKama/mcef-modern repo
+          git clone --depth 1 --branch 1.21.11 https://github.com/DimasKama/mcef-modern repo
           cd repo
-          echo "#### Zweige"; git branch -a
-          echo "#### Tags"; git tag | tail -30
-          for ref in $(git branch -r | grep -E "1\.21" | sed 's/ //g') $(git tag | grep -E "1\.21\.11" ); do
-            echo "######## $ref"
-            git checkout -q "$ref" 2>/dev/null || continue
-            cat gradle.properties | grep -E "minecraft_version|fabric_version|loom"
-            for f in $(find src/testmod -type f -name '*.java' 2>/dev/null); do
-              echo "=== $f"
-              cat "$f"
-            done
-          done
+          echo "#### build.gradle"; cat build.gradle
+          echo "#### accesswidener / resources"; find src -type f \( -name '*.accesswidener' -o -name 'fabric.mod.json' -o -name '*.json' \) | head -20
+          for f in $(find src -name '*.accesswidener'); do echo "=== $f"; cat "$f"; done
+          echo "#### MCEFBrowserImpl"; cat src/main/java/net/dimaskama/mcef/impl/MCEFBrowserImpl.java
+          echo "#### MCEFApiImpl"; cat src/main/java/net/dimaskama/mcef/impl/MCEFApiImpl.java
