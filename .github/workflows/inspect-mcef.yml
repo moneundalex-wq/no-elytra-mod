@@ -1,7 +1,5 @@
 name: Inspect MCEF
 
-# Wird nur ausgelöst, wenn die Datei inspect-mcef.trigger geändert wird.
-# Schreibt Teile des Quellcodes von MCEF Modern für Minecraft 1.21.11 ins Protokoll.
 on:
   push:
     paths:
@@ -15,8 +13,7 @@ jobs:
         run: |
           git clone --depth 1 --branch 1.21.11 https://github.com/DimasKama/mcef-modern repo
           cd repo
-          echo "#### build.gradle"; cat build.gradle
-          echo "#### accesswidener / resources"; find src -type f \( -name '*.accesswidener' -o -name 'fabric.mod.json' -o -name '*.json' \) | head -20
-          for f in $(find src -name '*.accesswidener'); do echo "=== $f"; cat "$f"; done
-          echo "#### MCEFBrowserImpl"; cat src/main/java/net/dimaskama/mcef/impl/MCEFBrowserImpl.java
+          echo "#### files"; find src -name '*.java' | head -80
+          for f in $(find src -name 'MCEFApi.java' -o -name '*Test*Screen*.java' -o -name 'MCEFBrowser.java' -o -name 'MCEFModClient*.java'); do echo "=== $f"; cat "$f"; done
+          echo "#### gradle.properties"; cat gradle.properties
           echo "#### MCEFApiImpl"; cat src/main/java/net/dimaskama/mcef/impl/MCEFApiImpl.java
