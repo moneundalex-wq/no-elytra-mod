@@ -1,5 +1,6 @@
 {
 	"key.junkdrop.drop": "Junk droppen (Inventar)",
 	"key.junkdrop.drop_hotbar": "Junk droppen (Inventar + Hotbar)",
-	"key.junkdrop.toggle": "Handitem zur Junk-Liste hinzufügen/entfernen"
+	"key.junkdrop.toggle": "Handitem zur Junk-Liste hinzufügen/entfernen",
+	"key.junkdrop.menu": "Junk-Drop-Menü öffnen"
 }

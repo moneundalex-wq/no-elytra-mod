@@ -71,6 +71,7 @@ public class JunkDropClient implements ClientModInitializer {
 	private KeyMapping dropKey;
 	private KeyMapping dropWithHotbarKey;
 	private KeyMapping toggleKey;
+	private KeyMapping menuKey;
 
 	@Override
 	public void onInitializeClient() {
@@ -84,6 +85,9 @@ public class JunkDropClient implements ClientModInitializer {
 				"key.junkdrop.drop_hotbar", InputConstants.Type.KEYSYM, InputConstants.KEY_K, category));
 		toggleKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 				"key.junkdrop.toggle", InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(), category));
+
+		menuKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+				"key.junkdrop.menu", InputConstants.Type.KEYSYM, InputConstants.KEY_H, category));
 
 		ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
 	}
@@ -105,6 +109,12 @@ public class JunkDropClient implements ClientModInitializer {
 		}
 		while (toggleKey.consumeClick()) {
 			toggleHeldItem(player);
+		}
+		while (menuKey.consumeClick()) {
+			if (client.screen == null) {
+				loadConfig();
+				client.setScreen(new JunkDropScreen(null, this));
+			}
 		}
 
 		// Pausiert, solange du selbst ein Inventar/Menü offen hast
@@ -239,7 +249,12 @@ public class JunkDropClient implements ClientModInitializer {
 		junk.put("minecraft:lingering_potion", 0);
 	}
 
-	private void loadConfig() {
+	/** Die Junk-Liste (Item-ID -> Behalte-Anzahl), vom Einstellungs-Menü bearbeitet. */
+	Map<String, Integer> junkMap() {
+		return junk;
+	}
+
+	void loadConfig() {
 		junk.clear();
 		try {
 			if (!Files.exists(configPath)) {
@@ -288,7 +303,7 @@ public class JunkDropClient implements ClientModInitializer {
 		}
 	}
 
-	private void saveConfig() {
+	void saveConfig() {
 		List<String> lines = new ArrayList<>();
 		lines.add("# Junk Drop: Items, die per Hotkey gedroppt werden.");
 		lines.add("# Eine Item-ID pro Zeile, zum Beispiel minecraft:ender_pearl");
