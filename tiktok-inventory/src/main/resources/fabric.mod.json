@@ -1,0 +1,20 @@
+{
+	"schemaVersion": 1,
+	"id": "tiktokinventory",
+	"version": "${version}",
+	"name": "TikTok Inventory",
+	"description": "Client-side mod: a TikTok button in the inventory opens TikTok in an embedded browser (needs MCEF Modern).",
+	"authors": ["You"],
+	"license": "CC0-1.0",
+	"environment": "client",
+	"entrypoints": {
+		"client": ["dev.tiktokinventory.TikTokInventoryClient"]
+	},
+	"depends": {
+		"fabricloader": ">=0.18.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*",
+		"mcef-modern": "*"
+	}
+}

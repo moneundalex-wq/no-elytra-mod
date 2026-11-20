@@ -11,7 +11,7 @@ base {
 }
 
 repositories {
-	// Hier sind keine zusätzlichen Repositories nötig.
+	maven { url = 'https://maven.dimaskama.net/releases' }
 }
 
 dependencies {
@@ -21,6 +21,7 @@ dependencies {
 
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+	modImplementation "net.dimaskama:mcef-modern:${project.mcef_version}"
 }
 
 processResources {

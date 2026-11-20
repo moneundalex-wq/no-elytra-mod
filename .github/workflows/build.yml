@@ -30,6 +30,9 @@ jobs:
           - dir: pearl-counter
             slug: pearl
             watch: pearl-counter
+          - dir: tiktok-inventory
+            slug: tiktok
+            watch: tiktok-inventory
     defaults:
       run:
         working-directory: ${{ matrix.dir }}
