@@ -6,6 +6,7 @@ import com.mojang.blaze3d.textures.GpuTextureView;
 import net.dimaskama.mcef.api.MCEFApi;
 import net.dimaskama.mcef.api.MCEFBrowser;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.render.TextureSetup;
 import net.minecraft.client.gui.render.state.BlitRenderState;
 import net.minecraft.client.gui.screens.Screen;
@@ -23,10 +24,11 @@ public class TikTokScreen extends Screen {
 	private final Screen parent;
 	private MCEFBrowser browser;
 	private int px, py, pw, ph; // Panel in GUI-Einheiten
+	private Button reloadBtn;
 	private double scale = 1;   // Browser-Pixel pro GUI-Einheit
 
 	private void layout() {
-		int mx = Math.max(12, width / 12);
+		int mx = Math.max(28, width / 12);
 		int my = Math.max(8, height / 14);
 		px = mx; py = my; pw = width - 2 * mx; ph = height - 2 * my;
 		scale = minecraft.getWindow().getGuiScale();
@@ -41,6 +43,10 @@ public class TikTokScreen extends Screen {
 	public TikTokScreen(Screen parent) {
 		super(Component.literal("TikTok"));
 		this.parent = parent;
+	}
+
+	private void reload() {
+		if (browser != null) browser.getCefBrowser().reload();
 	}
 
 	private boolean ready() {
@@ -59,6 +65,8 @@ public class TikTokScreen extends Screen {
 	@Override
 	protected void init() {
 		layout();
+		reloadBtn = Button.builder(Component.literal("R"), b -> reload())
+				.bounds(px + pw + 4, py, 20, 20).build();
 		ensureBrowser();
 		if (browser != null) {
 			browser.resize(bw(), bh());
@@ -95,6 +103,7 @@ public class TikTokScreen extends Screen {
 			g.drawCenteredString(font, "TikTok lädt …", width / 2, height / 2, 0xFFFFFFFF);
 		}
 		g.requestCursor(browser.getCursorType());
+		if (reloadBtn != null) reloadBtn.render(g, mouseX, mouseY, partialTick);
 	}
 
 	@Override
@@ -122,6 +131,7 @@ public class TikTokScreen extends Screen {
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
 		if (browser != null) {
+			if (reloadBtn != null && reloadBtn.mouseClicked(event, doubled)) return true;
 			if (!inside(event.x(), event.y())) { onClose(); return true; } // Klick daneben = schließen
 			browser.onMouseMoved((int) bx(event.x()), (int) by(event.y()));
 			browser.onMouseClicked(scaled(event), doubled);
@@ -158,6 +168,7 @@ public class TikTokScreen extends Screen {
 			onClose();
 			return true;
 		}
+		if (event.key() == 294) { reload(); return true; } // F5
 		if (browser != null) browser.onKeyPressed(event);
 		return true;
 	}
