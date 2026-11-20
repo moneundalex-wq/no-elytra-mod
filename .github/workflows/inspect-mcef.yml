@@ -1,0 +1,26 @@
+name: Inspect MCEF
+
+# Wird nur ausgelöst, wenn die Datei inspect-mcef.trigger geändert wird.
+# Schreibt die Maven-Metadaten und den Beispiel-Code von MCEF Modern ins Protokoll.
+on:
+  push:
+    paths:
+      - 'inspect-mcef.trigger'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Maven-Metadaten
+        run: |
+          curl -sS https://maven.dimaskama.net/releases/net/dimaskama/mcef-modern/maven-metadata.xml || echo "metadata fetch failed"
+
+      - name: Quellcode des Test-Mods
+        run: |
+          git clone --depth 1 https://github.com/DimasKama/mcef-modern repo
+          echo "#### gradle.properties"; cat repo/gradle.properties
+          echo "#### Dateien"; find repo/src -type f | head -150
+          for f in $(find repo/src/testmod -type f \( -name '*.java' -o -name '*.json' \)); do
+            echo "=== $f"
+            cat "$f"
+          done

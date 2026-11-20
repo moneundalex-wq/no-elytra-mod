@@ -14,21 +14,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # watch = Pfade, deren Änderung ein neues Release auslöst
           - dir: .
             slug: elytra
+            watch: src build.gradle gradle.properties settings.gradle
           - dir: auto-totem
             slug: totem
+            watch: auto-totem
           - dir: turtle-master-alert
             slug: turtle
+            watch: turtle-master-alert
           - dir: junk-drop
             slug: junk
+            watch: junk-drop
           - dir: pearl-counter
             slug: pearl
+            watch: pearl-counter
     defaults:
       run:
         working-directory: ${{ matrix.dir }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -49,8 +57,23 @@ jobs:
           name: ${{ matrix.slug }}
           path: ${{ matrix.dir }}/build/libs/*[0-9].jar
 
+      # Nur Mods, deren Dateien sich in diesem Push geändert haben, bekommen ein neues Release
+      - name: Hat sich diese Mod geändert?
+        id: changed
+        working-directory: ${{ github.workspace }}
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "$BEFORE" "${{ github.sha }}" -- ${{ matrix.watch }}; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
       # Legt die fertige .jar als Download auf der Releases-Seite ab
       - name: Release erstellen
+        if: steps.changed.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
