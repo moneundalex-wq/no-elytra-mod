@@ -20,7 +20,8 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.projectile.ThrownEnderpearl;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.phys.AABB;
 
 /**
@@ -79,8 +80,8 @@ public class PearlCounterClient implements ClientModInitializer {
 		// --- Sichtbare eigene Perlen erfassen ---
 		visible.clear();
 		AABB box = player.getBoundingBox().inflate(SEARCH_RADIUS);
-		for (ThrownEnderpearl pearl : level.getEntitiesOfClass(ThrownEnderpearl.class, box)) {
-			if (!isMine(pearl, player)) {
+		for (Projectile pearl : level.getEntitiesOfClass(Projectile.class, box)) {
+			if (pearl.getType() != EntityType.ENDER_PEARL || !isMine(pearl, player)) {
 				continue;
 			}
 			visible.add(pearl.getUUID());
@@ -159,7 +160,7 @@ public class PearlCounterClient implements ClientModInitializer {
 		}
 	}
 
-	private static boolean isMine(ThrownEnderpearl pearl, LocalPlayer player) {
+	private static boolean isMine(Projectile pearl, LocalPlayer player) {
 		Entity owner = pearl.getOwner();
 		return owner != null && owner.getUUID().equals(player.getUUID());
 	}
