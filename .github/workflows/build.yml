@@ -33,6 +33,9 @@ jobs:
           - dir: tiktok-inventory
             slug: tiktok
             watch: tiktok-inventory
+          - dir: freecam
+            slug: freecam
+            watch: freecam
     defaults:
       run:
         working-directory: ${{ matrix.dir }}

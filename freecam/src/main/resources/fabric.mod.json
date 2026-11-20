@@ -1,0 +1,17 @@
+{
+	"schemaVersion": 1,
+	"id": "freecamlite",
+	"version": "${version}",
+	"name": "Freecam",
+	"description": "Client-side freecam: fly around with the camera while your player stays where it is.",
+	"authors": ["You"],
+	"license": "CC0-1.0",
+	"environment": "client",
+	"entrypoints": { "client": ["dev.freecam.FreecamClient"] },
+	"depends": {
+		"fabricloader": ">=0.18.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
