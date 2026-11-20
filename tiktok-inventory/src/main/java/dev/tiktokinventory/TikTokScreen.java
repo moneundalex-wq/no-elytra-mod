@@ -46,7 +46,15 @@ public class TikTokScreen extends Screen {
 	}
 
 	private void reload() {
-		if (browser != null) browser.getCefBrowser().reload();
+		if (browser == null) return;
+		try {
+			// per Reflection, damit die CEF-Klassen nicht beim Kompilieren gebraucht werden
+			Object cef = browser.getClass().getMethod("getCefBrowser").invoke(browser);
+			Class<?> cls = Class.forName("org.cef.browser.CefBrowser", true, browser.getClass().getClassLoader());
+			cls.getMethod("reloadIgnoreCache").invoke(cef);
+		} catch (Throwable t) {
+			System.err.println("[TikTokInventory] Reload fehlgeschlagen: " + t);
+		}
 	}
 
 	private boolean ready() {
