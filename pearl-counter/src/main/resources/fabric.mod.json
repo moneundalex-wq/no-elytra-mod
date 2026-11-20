@@ -1,0 +1,23 @@
+{
+	"schemaVersion": 1,
+	"id": "pearlcounter",
+	"version": "${version}",
+	"name": "Pearl Counter",
+	"description": "Client-side mod: shows how many of your own ender pearls your client can see or has seen, with coordinates.",
+	"authors": [
+		"You"
+	],
+	"license": "CC0-1.0",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"dev.pearlcounter.PearlCounterClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.18.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

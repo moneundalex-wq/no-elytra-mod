@@ -22,6 +22,8 @@ jobs:
             slug: turtle
           - dir: junk-drop
             slug: junk
+          - dir: pearl-counter
+            slug: pearl
     defaults:
       run:
         working-directory: ${{ matrix.dir }}
