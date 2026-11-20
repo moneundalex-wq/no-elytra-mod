@@ -9,7 +9,7 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -33,7 +33,7 @@ public class FreecamClient implements ClientModInitializer {
 				"key.freecam.toggle", InputConstants.Type.KEYSYM, 297 /* F8 */, KeyMapping.Category.MISC));
 
 		ClientTickEvents.START_CLIENT_TICK.register(this::tick);
-		HudElementRegistry.addLast(ResourceLocation.fromNamespaceAndPath("freecamlite", "status"), (g, delta) -> {
+		HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("freecamlite", "status"), (g, delta) -> {
 			Minecraft mc = Minecraft.getInstance();
 			if (cam != null) {
 				transferLook(mc);
