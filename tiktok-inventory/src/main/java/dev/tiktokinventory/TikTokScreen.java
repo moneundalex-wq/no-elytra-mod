@@ -22,6 +22,21 @@ public class TikTokScreen extends Screen {
 
 	private final Screen parent;
 	private MCEFBrowser browser;
+	private int px, py, pw, ph; // Panel in GUI-Einheiten
+	private double scale = 1;   // Browser-Pixel pro GUI-Einheit
+
+	private void layout() {
+		int mx = Math.max(12, width / 12);
+		int my = Math.max(8, height / 14);
+		px = mx; py = my; pw = width - 2 * mx; ph = height - 2 * my;
+		scale = minecraft.getWindow().getGuiScale();
+	}
+
+	private int bw() { return Math.max(1, (int) Math.round(pw * scale)); }
+	private int bh() { return Math.max(1, (int) Math.round(ph * scale)); }
+	private double bx(double x) { return (x - px) * scale; }
+	private double by(double y) { return (y - py) * scale; }
+	private boolean inside(double x, double y) { return x >= px && y >= py && x < px + pw && y < py + ph; }
 
 	public TikTokScreen(Screen parent) {
 		super(Component.literal("TikTok"));
@@ -35,23 +50,29 @@ public class TikTokScreen extends Screen {
 	private void ensureBrowser() {
 		if (browser == null && ready()) {
 			browser = MCEFApi.getInstance().createBrowser(URL, false);
-			browser.resize(width, height);
+			layout();
+			browser.resize(bw(), bh());
 			browser.setFocus(true);
 		}
 	}
 
 	@Override
 	protected void init() {
+		layout();
 		ensureBrowser();
 		if (browser != null) {
-			browser.resize(width, height);
+			browser.resize(bw(), bh());
 		}
 	}
 
 	@Override
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 		ensureBrowser();
-		g.fill(0, 0, width, height, 0xFF000000);
+		// Minecraft im Hintergrund noch sichtbar, nur abgedunkelt
+		parent.render(g, -1, -1, partialTick);
+		g.fill(0, 0, width, height, 0x99000000);
+		g.fill(px - 2, py - 2, px + pw + 2, py + ph + 2, 0xFF303030);
+		g.fill(px, py, px + pw, py + ph, 0xFF101010);
 		if (browser == null) {
 			MCEFApi.Initialization init = MCEFApi.initialize();
 			float p = init.getPercentage();
@@ -66,10 +87,12 @@ public class TikTokScreen extends Screen {
 					RenderPipelines.GUI_TEXTURED,
 					TextureSetup.singleTexture(view, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR)),
 					new Matrix3x2f(g.pose()),
-					0, 0, width, height,
+					px, py, px + pw, py + ph,
 					0.0F, 1.0F, 0.0F, 1.0F,
 					0xFFFFFFFF,
 					g.scissorStack.peek()));
+		} else {
+			g.drawCenteredString(font, "TikTok lädt …", width / 2, height / 2, 0xFFFFFFFF);
 		}
 		g.requestCursor(browser.getCursorType());
 	}
@@ -92,27 +115,41 @@ public class TikTokScreen extends Screen {
 		}
 	}
 
+	private MouseButtonEvent scaled(MouseButtonEvent e) {
+		return new MouseButtonEvent(bx(e.x()), by(e.y()), e.buttonInfo());
+	}
+
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
-		if (browser != null) browser.onMouseClicked(event, doubled);
+		if (browser != null) {
+			if (!inside(event.x(), event.y())) { onClose(); return true; } // Klick daneben = schließen
+			browser.onMouseMoved((int) bx(event.x()), (int) by(event.y()));
+			browser.onMouseClicked(scaled(event), doubled);
+		}
 		return true;
 	}
 
 	@Override
 	public boolean mouseReleased(MouseButtonEvent event) {
-		if (browser != null) browser.onMouseReleased(event);
+		if (browser != null) browser.onMouseReleased(scaled(event));
+		return true;
+	}
+
+	@Override
+	public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+		if (browser != null) browser.onMouseMoved((int) bx(event.x()), (int) by(event.y()));
 		return true;
 	}
 
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-		if (browser != null) browser.onMouseScrolled((int) mouseX, (int) mouseY, verticalAmount);
+		if (browser != null) browser.onMouseScrolled((int) bx(mouseX), (int) by(mouseY), verticalAmount);
 		return true;
 	}
 
 	@Override
 	public void mouseMoved(double x, double y) {
-		if (browser != null) browser.onMouseMoved((int) x, (int) y);
+		if (browser != null) browser.onMouseMoved((int) bx(x), (int) by(y));
 	}
 
 	@Override
