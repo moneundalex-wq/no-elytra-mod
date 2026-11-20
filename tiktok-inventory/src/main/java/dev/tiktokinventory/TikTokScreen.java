@@ -19,7 +19,24 @@ import org.joml.Matrix3x2f;
 
 public class TikTokScreen extends Screen {
 
-	private static final String URL = "https://www.tiktok.com/foryou";
+	private static final String DEFAULT_URL = "https://www.tiktok.com/foryou";
+
+	/** Startseite aus config/tiktokinventory.txt (eine Zeile mit der Adresse); wird beim ersten Mal angelegt. */
+	private static String url() {
+		try {
+			java.nio.file.Path f = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("tiktokinventory.txt");
+			if (!java.nio.file.Files.exists(f)) {
+				java.nio.file.Files.writeString(f, DEFAULT_URL + "\n");
+				return DEFAULT_URL;
+			}
+			for (String line : java.nio.file.Files.readAllLines(f)) {
+				String t = line.trim();
+				if (t.startsWith("http")) return t;
+			}
+		} catch (Throwable ignored) {
+		}
+		return DEFAULT_URL;
+	}
 
 	private final Screen parent;
 	private MCEFBrowser browser;
@@ -63,7 +80,7 @@ public class TikTokScreen extends Screen {
 
 	private void ensureBrowser() {
 		if (browser == null && ready()) {
-			browser = MCEFApi.getInstance().createBrowser(URL, false);
+			browser = MCEFApi.getInstance().createBrowser(url(), false);
 			layout();
 			browser.resize(bw(), bh());
 			browser.setFocus(true);
