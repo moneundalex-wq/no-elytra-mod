@@ -3,9 +3,10 @@ package dev.turtlealert;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.toasts.SystemToast;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.Identifier;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 
@@ -17,7 +18,7 @@ import net.minecraft.world.effect.MobEffects;
  * Diese Mod erkennt Turtle Master daran, dass beide Effekte zusammen aktiv sind
  * (Langsamkeit ab Stufe IV, Resistenz ab Stufe III).
  *
- * Zeigt oben rechts eine Meldung (Toast), wenn
+ * Zeigt eine große Meldung oben in der Mitte (grauer, leuchtender Rand, 3 Sekunden), wenn
  *   1) Turtle Master nur noch ca. eine Minute läuft, und
  *   2) Turtle Master abgelaufen ist (du hast ihn nicht mehr).
  *
@@ -35,8 +36,13 @@ public class TurtleMasterAlertClient implements ClientModInitializer {
 	/** Turtle Master: Resistenz III = Stufe 2 (0 = Stufe I). */
 	private static final int MIN_RESISTANCE_AMPLIFIER = 2;
 
-	private static final SystemToast.SystemToastId LOW_TOAST = new SystemToast.SystemToastId();
-	private static final SystemToast.SystemToastId EMPTY_TOAST = new SystemToast.SystemToastId();
+	/** So lange (ms) bleibt die große Meldung mit Rand sichtbar. */
+	private static final long SHOW_MS = 3000;
+	/** Die letzten ms davon blendet sie weich aus. */
+	private static final long FADE_MS = 700;
+
+	private static String overlayText = null;
+	private static long overlayStart = 0;
 
 	private boolean hadEffect = false;
 	private boolean lowWarned = false;
@@ -45,6 +51,49 @@ public class TurtleMasterAlertClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
+		HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("turtlemasteralert", "alert"),
+				(g, delta) -> renderOverlay(g));
+	}
+
+	private static void renderOverlay(GuiGraphics g) {
+		if (overlayText == null) return;
+		long age = System.currentTimeMillis() - overlayStart;
+		if (age >= SHOW_MS) { overlayText = null; return; }
+		float a = age > SHOW_MS - FADE_MS ? (SHOW_MS - age) / (float) FADE_MS : 1f;
+		a = Math.max(0f, Math.min(1f, a));
+
+		Minecraft mc = Minecraft.getInstance();
+		float scale = 2.5f;
+		int textW = mc.font.width(overlayText);
+		int boxW = (int) (textW * scale) + 40;
+		int boxH = (int) (mc.font.lineHeight * scale) + 24;
+		int x = g.guiWidth() / 2 - boxW / 2;
+		int y = 36;
+
+		// Weicher grauer Leuchtrand: mehrere Rahmen, nach außen immer durchsichtiger
+		for (int i = 10; i >= 1; i--) {
+			float f = 1f - i / 11f;
+			int col = alpha(a * f * f * 0.55f, 0xB4B4B4);
+			g.fill(x - i, y - i, x + boxW + i, y - i + 1, col);                 // oben
+			g.fill(x - i, y + boxH + i - 1, x + boxW + i, y + boxH + i, col);   // unten
+			g.fill(x - i, y - i, x - i + 1, y + boxH + i, col);                 // links
+			g.fill(x + boxW + i - 1, y - i, x + boxW + i, y + boxH + i, col);   // rechts
+		}
+		// Innerer feiner Rand + dunkler Hintergrund
+		g.fill(x - 1, y - 1, x + boxW + 1, y + boxH + 1, alpha(a * 0.9f, 0xC8C8C8));
+		g.fill(x, y, x + boxW, y + boxH, alpha(a * 0.80f, 0x101010));
+
+		// Große Schrift
+		g.pose().pushMatrix();
+		g.pose().translate(x + 20, y + 12);
+		g.pose().scale(scale, scale);
+		g.drawString(mc.font, overlayText, 0, 0, alpha(a, 0xFFFFFF), true);
+		g.pose().popMatrix();
+	}
+
+	private static int alpha(float a, int rgb) {
+		int al = Math.max(0, Math.min(255, (int) (a * 255)));
+		return (al << 24) | (rgb & 0xFFFFFF);
 	}
 
 	private void onTick(Minecraft client) {
@@ -83,15 +132,11 @@ public class TurtleMasterAlertClient implements ClientModInitializer {
 
 			if (!lowWarned && duration <= LOW_WARNING_TICKS) {
 				lowWarned = true;
-				show(client, LOW_TOAST,
-						Component.literal("Turtle Master"),
-						Component.literal("Nur noch ca. 1 Minute übrig!"));
+				show("TURTLE MASTER: nur noch ca. 1 Minute!");
 			}
 		} else if (hadEffect) {
 			reset();
-			show(client, EMPTY_TOAST,
-					Component.literal("Turtle Master"),
-					Component.literal("Effekt ist abgelaufen!"));
+			show("TURTLE MASTER ist abgelaufen!");
 		}
 	}
 
@@ -101,7 +146,8 @@ public class TurtleMasterAlertClient implements ClientModInitializer {
 		previousDuration = 0;
 	}
 
-	private static void show(Minecraft client, SystemToast.SystemToastId id, Component title, Component message) {
-		SystemToast.addOrUpdate(client.getToastManager(), id, title, message);
+	private static void show(String text) {
+		overlayText = text;
+		overlayStart = System.currentTimeMillis();
 	}
 }
