@@ -63,12 +63,12 @@ public class TurtleMasterAlertClient implements ClientModInitializer {
 		a = Math.max(0f, Math.min(1f, a));
 
 		Minecraft mc = Minecraft.getInstance();
-		float scale = 2.5f;
+		float scale = 1.6f;
 		int textW = mc.font.width(overlayText);
-		int boxW = (int) (textW * scale) + 40;
-		int boxH = (int) (mc.font.lineHeight * scale) + 24;
+		int boxW = (int) (textW * scale) + 28;
+		int boxH = (int) (mc.font.lineHeight * scale) + 16;
 		int x = g.guiWidth() / 2 - boxW / 2;
-		int y = 36;
+		int y = 28;
 
 		// Weicher grauer Leuchtrand: mehrere Rahmen, nach außen immer durchsichtiger
 		for (int i = 10; i >= 1; i--) {
@@ -85,7 +85,7 @@ public class TurtleMasterAlertClient implements ClientModInitializer {
 
 		// Große Schrift
 		g.pose().pushMatrix();
-		g.pose().translate(x + 20, y + 12);
+		g.pose().translate(x + 14, y + 8);
 		g.pose().scale(scale, scale);
 		g.drawString(mc.font, overlayText, 0, 0, alpha(a, 0xFFFFFF), true);
 		g.pose().popMatrix();
